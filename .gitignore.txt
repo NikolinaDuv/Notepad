@@ -1,0 +1,9 @@
+build/
+*.pro.user
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+moc_*
+ui_*.h
+qrc_*.cpp

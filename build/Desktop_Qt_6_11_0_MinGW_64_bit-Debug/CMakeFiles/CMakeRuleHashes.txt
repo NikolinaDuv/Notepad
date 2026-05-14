@@ -1,0 +1,4 @@
+# Hashes of file build rules.
+f29422ae1151d12db70e8d5c72d3ea26 CMakeFiles/Notepad2_autogen
+a03d8344d1438365b7b6a2e6b7465b24 Notepad2_autogen/EWIEGA46WW/qrc_resources.cpp
+40dca3367c597b59e7db2a0fb27575f1 Notepad2_autogen/timestamp
