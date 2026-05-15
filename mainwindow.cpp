@@ -9,6 +9,8 @@
 #include <QInputDialog>
 #include <QLineEdit>
 #include <QTextCharFormat>
+#include <QTextFrame>
+#include <QStyle>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -16,10 +18,7 @@ MainWindow::MainWindow(QWidget *parent)
 {
     ui->setupUi(this);
 
-
     ui->textEdit->setUndoRedoEnabled(true);
-
-
 
 
     connect(ui->actionNew, &QAction::triggered, this, &MainWindow::noviDokument);
@@ -27,26 +26,15 @@ MainWindow::MainWindow(QWidget *parent)
     connect(ui->actionSave, &QAction::triggered, this, &MainWindow::spremiDatoteku);
     connect(ui->actionExit, &QAction::triggered, this, &QWidget::close);
 
-
     connect(ui->actionFont, &QAction::triggered, this, &MainWindow::promijeniFont);
     connect(ui->actionColor, &QAction::triggered, this, &MainWindow::promijeniBoju);
     connect(ui->actionBackground_color, &QAction::triggered, this, &MainWindow::promijeniBojuPozadine);
 
-
     connect(ui->actionFind, &QAction::triggered, this, &MainWindow::pronadjiTekst);
-
-
     connect(ui->actionDark_Mode, &QAction::toggled, this, &MainWindow::promijeniTemu);
 
-
-    connect(ui->actionZoomIn, &QAction::triggered, [=](){
-        ui->textEdit->zoomIn();
-    });
-    connect(ui->actionZoomOut, &QAction::triggered, [=](){
-        ui->textEdit->zoomOut();
-    });
-
-
+    connect(ui->actionZoomIn, &QAction::triggered, [=](){ ui->textEdit->zoomIn(); });
+    connect(ui->actionZoomOut, &QAction::triggered, [=](){ ui->textEdit->zoomOut(); });
     connect(ui->actionZoomReset, &QAction::triggered, this, &MainWindow::resetujZoom);
 
 
@@ -58,26 +46,29 @@ MainWindow::MainWindow(QWidget *parent)
     });
 
 
-    connect(ui->textEdit, &QTextEdit::textChanged, [=](){
-        int count = ui->textEdit->toPlainText().length();
-        ui->statusbar->showMessage("Characters: " + QString::number(count));
-    });
-
-    setWindowTitle("Moj Notepad");
+    ui->textEdit->setStyleSheet("background-color: white; color: black; padding: 10px; border-radius: 5px;");
+    setWindowTitle("Notepad");
 }
 
 MainWindow::~MainWindow() {
     delete ui;
 }
 
-
 void MainWindow::noviDokument() {
     ui->textEdit->clear();
-    setWindowTitle("New Document - Notepad");
+
+    QTextFrameFormat format = ui->textEdit->document()->rootFrame()->frameFormat();
+    format.setBackground(Qt::white);
+    ui->textEdit->document()->rootFrame()->setFrameFormat(format);
+
+    ui->textEdit->setStyleSheet("background-color: white; color: black; padding: 10px;");
+    setWindowTitle("Novi dokument - Notepad");
 }
 
 void MainWindow::otvoriDatoteku() {
-    QString fileName = QFileDialog::getOpenFileName(this, "Open File", "", "HTML Files (*.html);;Text Files (*.txt);;All Files (*.*)");
+    QString filter = "Sve podržano (*.txt *.html);;Text Files (*.txt);;HTML Files (*.html);;All Files (*.*)";
+    QString fileName = QFileDialog::getOpenFileName(this, "Otvori datoteku", "", filter);
+
     if (fileName.isEmpty()) return;
 
     QFile file(fileName);
@@ -87,104 +78,113 @@ void MainWindow::otvoriDatoteku() {
     QString sadrzaj = in.readAll();
     file.close();
 
-
     if (fileName.endsWith(".html")) {
         ui->textEdit->setHtml(sadrzaj);
+
+
+        QColor bgColor = ui->textEdit->document()->rootFrame()->frameFormat().background().color();
+        if (bgColor.isValid()) {
+            ui->textEdit->setStyleSheet(QString("background-color: %1; padding: 10px;").arg(bgColor.name()));
+        }
     } else {
         ui->textEdit->setPlainText(sadrzaj);
     }
 
-    ui->textEdit->document()->setModified(false);
     setWindowTitle(fileName + " - Notepad");
 }
 
 void MainWindow::spremiDatoteku() {
-    QString fileName = QFileDialog::getSaveFileName(this, "Save File", "", "HTML Files (*.html);;Text Files (*.txt)");
+    QString fileName = QFileDialog::getSaveFileName(this, "Spremi kao", "", "HTML Files (*.html);;Text Files (*.txt)");
     if (fileName.isEmpty()) return;
 
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly | QFile::Text)) return;
 
     QTextStream out(&file);
+    if (fileName.endsWith(".html")) {
 
-
-    out << ui->textEdit->toHtml();
-
+        out << ui->textEdit->toHtml();
+    } else {
+        out << ui->textEdit->toPlainText();
+    }
     file.close();
     setWindowTitle(fileName + " - Notepad");
 }
 
 void MainWindow::promijeniFont() {
     bool ok;
-    QFont font = QFontDialog::getFont(&ok, ui->textEdit->font(), this);
-    if (ok) ui->textEdit->setFont(font);
-}
-
-void MainWindow::promijeniBoju() {
-    QColor boja = QColorDialog::getColor(Qt::black, this, "Izaberi boju teksta");
-    if (boja.isValid()) {
-        ui->textEdit->setTextColor(boja);
+    QFont currentFont = ui->textEdit->currentCharFormat().font();
+    QFont font = QFontDialog::getFont(&ok, currentFont, this);
+    if (ok) {
+        QTextCharFormat format;
+        format.setFont(font);
+        ui->textEdit->mergeCurrentCharFormat(format);
     }
 }
 
-void MainWindow::promijeniBojuPozadine() {
-    QColor boja = QColorDialog::getColor(Qt::white, this, "Izaberi boju pozadine");
+void MainWindow::promijeniBoju() {
+    QColor boja = QColorDialog::getColor(ui->textEdit->textColor(), this, "Boja teksta");
     if (boja.isValid()) {
-        QPalette p = ui->textEdit->palette();
-        p.setColor(QPalette::Base, boja);
-        ui->textEdit->setPalette(p);
+        QTextCharFormat format;
+        format.setForeground(boja);
+        ui->textEdit->mergeCurrentCharFormat(format);
+    }
+}
+
+
+void MainWindow::promijeniBojuPozadine() {
+    QColor boja = QColorDialog::getColor(Qt::white, this, "Boja pozadine");
+    if (boja.isValid()) {
+
+        ui->textEdit->setStyleSheet(QString("background-color: %1; padding: 10px; border-radius: 5px;").arg(boja.name()));
+
+
+        QTextDocument *doc = ui->textEdit->document();
+        QTextFrame *root = doc->rootFrame();
+        QTextFrameFormat format = root->frameFormat();
+        format.setBackground(boja);
+        root->setFrameFormat(format);
     }
 }
 
 void MainWindow::pronadjiTekst() {
     bool ok;
-    QString text = QInputDialog::getText(this, "Find All", "Search for (highlight all):", QLineEdit::Normal, "", &ok);
-
+    QString text = QInputDialog::getText(this, "Traži", "Pojam:", QLineEdit::Normal, "", &ok);
     if (ok && !text.isEmpty()) {
-        QList<QTextEdit::ExtraSelection> extraSelections;
+        QList<QTextEdit::ExtraSelection> selections;
         QTextCharFormat format;
         format.setBackground(Qt::yellow);
-        format.setForeground(Qt::black);
-
-        QTextDocument *doc = ui->textEdit->document();
-        QTextCursor cursor(doc);
-
+        QTextCursor cursor(ui->textEdit->document());
         while (!cursor.isNull() && !cursor.atEnd()) {
-            cursor = doc->find(text, cursor);
+            cursor = ui->textEdit->document()->find(text, cursor);
             if (!cursor.isNull()) {
-                QTextEdit::ExtraSelection selection;
-                selection.format = format;
-                selection.cursor = cursor;
-                extraSelections.append(selection);
+                QTextEdit::ExtraSelection s;
+                s.format = format;
+                s.cursor = cursor;
+                selections.append(s);
             }
         }
-        ui->textEdit->setExtraSelections(extraSelections);
+        ui->textEdit->setExtraSelections(selections);
     }
 }
 
 void MainWindow::promijeniTemu(bool dark) {
     if (dark) {
         this->setStyleSheet(
-            "QMainWindow { background-color: #2b2b2b; }"
-            "QTextEdit { background-color: #1e1e1e; color: #dcdcdc; border: none; font-size: 14px; }"
-            "QMenuBar { background-color: #2b2b2b; color: white; }"
-            "QMenuBar::item:selected { background-color: #3d3d3d; }"
-            "QStatusBar { background-color: #2b2b2b; color: gray; }"
+            "QMainWindow { background-color: #121212; }"
+            "QMenuBar { background-color: #1a1a1a; color: white; }"
+            "QStatusBar { background-color: #1a1a1a; color: #888; }"
+            "QToolBar { background-color: #1a1a1a; border: none; }"
             );
+        ui->textEdit->setStyleSheet("background-color: #1e1e1e; color: #dcdcdc; padding: 15px; border-radius: 10px;");
     } else {
         this->setStyleSheet("");
+        ui->textEdit->setStyleSheet("background-color: white; color: black; padding: 10px; border: 1px solid #ccc;");
     }
 }
 
 void MainWindow::resetujZoom() {
     QFont font = ui->textEdit->font();
-    font.setPointSize(12); // Vraća na standardnu veličinu
+    font.setPointSize(12);
     ui->textEdit->setFont(font);
-
-    // Resetira i kursor (za novi tekst)
-    QTextCharFormat format;
-    format.setFont(font);
-    ui->textEdit->setCurrentCharFormat(format);
-
-    ui->statusbar->showMessage("Zoom resetiran na 12", 2000);
 }

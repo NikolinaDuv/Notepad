@@ -16,7 +16,7 @@ public:
     ~MainWindow();
 
 private slots:
-    // Naše funkcije za gumbe
+
     void noviDokument();
     void otvoriDatoteku();
     void spremiDatoteku();
@@ -27,7 +27,9 @@ private slots:
     void promijeniTemu(bool dark);
     void resetujZoom();
 
+
+
 private:
     Ui::MainWindow *ui;
 };
-#endif // MAINWINDOW_H
+#endif
